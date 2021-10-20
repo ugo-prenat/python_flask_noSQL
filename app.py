@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from markupsafe import escape
 from flask import request
 from flask import Flask
 import numpy as np
@@ -51,6 +52,17 @@ def success_msg(code, msg):
         'msg': msg
     }
     return succes
+
+def get_user_id():
+    """
+        Get the id of the last user in the database and return it plus 1
+    """
+    users_list = list(users.find())
+    user_list_len = len(users_list)
+    last_user = users_list[user_list_len - 1]
+    last_id = last_user['_id']
+    return last_id + 1
+
 
 def prevent_create_user_errors(args):
     """
@@ -106,7 +118,7 @@ def prevent_create_user_errors(args):
     # if no error was found, return the 'error' object with the param 'found_error' set to false by default
     return error
 
-def create_user(args):
+def create_user(args, user_id):
     """
         Create an object containing the values of the new user and insert it in the database
 
@@ -115,6 +127,7 @@ def create_user(args):
     """
 
     new_user = {
+        '_id': user_id,
         'username': args.get('username'),
         'mail': args.get('mail'),
         'password': args.get('password'),
@@ -122,12 +135,25 @@ def create_user(args):
     }
     users.insert_one(new_user)
 
+def is_user_exists(wanted_id):
+    """
+        Loop on the list of all users to find a wanted user
+
+        params:
+            wanted_id: the id of the user we want to known if he exists or not
+    """
+    users_list = users.find({})
+    
+    for user in users_list:
+        if user['_id'] == wanted_id:
+            return True
+
+    return False
 
 @app.route("/users", methods=["POST"])
 def create_new_user():
     """
-        Create a new user with values passed in request args
-
+        Create a new user with values passed in request args and insert it into the database
     """
     args = request.args
 
@@ -137,10 +163,31 @@ def create_new_user():
         return error['error_content']
 
     else:
-        create_user(args)
-        return success_msg(200, 'L\'utilisateur a été créé')
+        user_id = get_user_id()
+        create_user(args, user_id)
+        return success_msg(200, f'L\'utilisateur a été créé, id: {user_id}')
 
-                    
+@app.route("/users/<id>", methods=["DELETE"])
+def delete_user(id):
+    """
+        Delete the user attached to the 'id' variable in the request url
+    """
+    user_id = escape(id)
+
+    # Check if the given id isn't a number
+    if user_id.isnumeric() == False:
+        return error_msg(400, f'La valeur \'{id}\' est incorrecte, nombre requis')
+        
+    # Check if the given id is attached to a user in the DB
+    if is_user_exists(int(user_id)):
+        # Delete user
+        users.delete_one({ '_id': int(user_id) })
+        return success_msg(200, f'L\'utilisateur {user_id} a été supprimé')
+    
+    else:
+        return error_msg(400, f'Aucun utilisateur n\'est rattaché à l\'id {user_id}')
+
+     
 
 if __name__ == '__main__':
     app.run(
