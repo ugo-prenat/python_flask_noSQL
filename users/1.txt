@@ -1,6 +1,6 @@
 {
-    'id': '1',
-    'firstname': 'Thierry',
-    'lastname': 'Decker',
-    'age': '57'
+    "id": "1",
+    "firstname": "Thierry",
+    "lastname": "Decker",
+    "age": "57"
 }
