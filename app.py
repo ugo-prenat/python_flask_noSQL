@@ -347,6 +347,46 @@ def modify_tournament(id):
     return success_msg(200, "Tournoi modifié")
 
 
+def is_tournament_exists(wanted_id):
+    """
+           Loop on the list of all tournaments to find a wanted user
+
+           params:
+               wanted_id: the id of the tournament we want to known if he exists or not
+       """
+    tournament_list = tournaments.find({})
+
+    for tournament in tournament_list:
+        if tournament['_id'] == wanted_id:
+            return True
+
+    return False
+
+
+@app.route("/tournaments/<id>", methods=["DELETE"])
+def delete_tournament(id):
+    """
+            Delete the tournament attached to the 'id' variable in the request url
+
+            param:
+                id: the id of the tournament that we want to delete
+        """
+    tournament_id = escape(id)
+
+    # Check if the given id isn't a number
+    if tournament_id.isnumeric() == False:
+        return error_msg(400, f'La valeur \'{id}\' est incorrecte, nombre requis')
+
+    # Check if the given id is attached to a tournament in the DB
+    if is_tournament_exists(int(tournament_id)):
+        # Delete user
+        tournaments.delete_one({'_id': int(tournament_id)})
+        return success_msg(200, f'L\'utilisateur {tournament_id} a été supprimé')
+
+    else:
+        return error_msg(400, f'Aucun utilisateur n\'est rattaché à l\'id {tournament_id}')
+
+
 if __name__ == '__main__':
     app.run(
         host="127.0.0.1",
