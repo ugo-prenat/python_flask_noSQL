@@ -2,9 +2,6 @@ from pymongo import MongoClient
 from markupsafe import escape
 from flask import request
 from flask import Flask
-import numpy as np
-import os
-import json
 
 app = Flask(__name__)
 
@@ -76,6 +73,35 @@ def get_tournament_id():
     last_id = last_tournament['_id']
     return last_id + 1
 
+def is_user_exists(wanted_id):
+    """
+        Loop on the list of all users to find the wanted user exists or not
+
+        params:
+            wanted_id: the id of the user we want to known if he exists or not
+    """
+    users_list = users.find({})
+
+    for user in users_list:
+        if user['_id'] == wanted_id:
+            return True
+
+    return False
+
+def is_tournament_exists(wanted_id):
+    """
+        Loop on the list of all tournaments to find the wanted tournament exists or not
+
+        params:
+            wanted_id: the id of the tournament we want to known if he exists or not
+    """
+    tournament_list = tournaments.find({})
+
+    for tournament in tournament_list:
+        if tournament['_id'] == wanted_id:
+            return True
+
+    return False
 
 def is_game_in_collection(game_name):
     """
@@ -197,6 +223,50 @@ def prevent_create_tournament_errors(args):
     # if no error was found, return the 'error' object with the param 'found_error' set to false by default
     return error
 
+def prevent_join_tournament_errors(args, user_id):
+    """
+        Prevent all possible errors
+
+        params:
+            args: array of all arguments passed in the request
+            user_id: the id of the user who wants to join a tournament
+
+        return the 'error' object
+    """
+
+    error = {
+        'found_error': False,
+        'error_content': {}
+    }
+
+    if len(args) == 0:
+        error['found_error'] = True
+        error['error_content'] = error_msg(400, f'L\'argument \'id\' est obligatoire')
+        return error
+
+    # Check for args errors
+    for arg, value in args.items():
+        if arg != 'id':
+            error['found_error'] = True
+            error['error_content'] = error_msg(400, f'L\'argument \'{arg}\' est inconnu')
+            return error
+        if arg == 'id' and value.isnumeric() == False:
+            error['found_error'] = True
+            error['error_content'] = error_msg(400, f'La valeur de l\'argument \'id\' est incorrecte, nombre requis')
+            return error
+        elif arg == 'id' and is_tournament_exists(int(value)) == False:
+            error['found_error'] = True
+            error['error_content'] = error_msg(400, f'Aucun tournoi n\'est rattaché à l\'id {value}')
+            return error
+
+    # Check if the user id is attached to an existing user
+    if is_user_exists(int(user_id)) == False:
+        error['found_error'] = True
+        error['error_content'] = error_msg(400, f'Aucun utilisateur n\'est rattaché à l\'id {user_id}')
+        return error
+
+    # if no error was found, return the 'error' object with the param 'found_error' set to false by default
+    return error
 
 def create_user(args, user_id):
     """
@@ -213,6 +283,7 @@ def create_user(args, user_id):
         'mail': args.get('mail'),
         'password': args.get('password'),
         'is_admin': args.get('is_admin'),
+        'tournaments_list': []
     }
     users.insert_one(new_user)
 
@@ -231,22 +302,48 @@ def create_tournament(args, tournament_id):
         'title': args.get('title'),
         'game': args.get('game'),
         'participant_limit': args.get('participant_limit'),
-        'total_participant': 0
+        'total_participant': 0,
     }
     tournaments.insert_one(new_tournament)
 
-
-def is_user_exists(wanted_id):
+def get_tournament_by_id(tournament_id):
     """
-        Loop on the list of all users to find a wanted user
+        Find a tournament in the tournaments list and return it
 
         params:
-            wanted_id: the id of the user we want to known if he exists or not
+            tournament_id: the id of the tournament we want to find
     """
-    users_list = users.find({})
+    tournaments_list = list(tournaments.find())
+
+    for tournament in tournaments_list:
+        if tournament['_id'] == tournament_id:
+            return tournament
+
+def get_user_by_id(user_id):
+    """
+        Find a user in the users list and return it
+
+        params:
+            user_id: the id of the user we want to find
+    """
+    users_list = list(users.find())
 
     for user in users_list:
-        if user['_id'] == wanted_id:
+        if user['_id'] == user_id:
+            return user
+
+def is_tournament_already_joined(user_tournament_list, tournament_id):
+    """
+        Loop in the user's joined tournaments to find if he already joined the tournament that he wants to join
+
+        params: 
+            user_tournament_list: list of all tournaments joined by the user
+            tournament_id: the id of the tournament that we want to know if the user already joined it
+    
+        return: boolean
+    """
+    for tournament in user_tournament_list:
+        if tournament['id'] == tournament_id:
             return True
 
     return False
@@ -272,7 +369,7 @@ def create_new_user():
 
 
 @app.route("/users/<id>", methods=["DELETE"])
-def delete_user(id):
+def delete_user_route(id):
     """
         Delete the user attached to the 'id' variable in the request url
 
@@ -281,9 +378,10 @@ def delete_user(id):
     """
     user_id = escape(id)
 
+
     # Check if the given id isn't a number
-    if user_id.isnumeric() == False:
-        return error_msg(400, f'La valeur \'{id}\' est incorrecte, nombre requis')
+    if id.isnumeric() == False:
+        return error_msg(400, f'La valeur \'{user_id}\' est incorrecte, nombre requis')
 
     # Check if the given id is attached to a user in the DB
     if is_user_exists(int(user_id)):
@@ -294,25 +392,15 @@ def delete_user(id):
     else:
         return error_msg(400, f'Aucun utilisateur n\'est rattaché à l\'id {user_id}')
 
-
-@app.route("/tournaments", methods=["POST"])
-def create_new_tournament():
-    """
-        Create a tournament with values passed in request args and insert it into the database
-    """
-    args = request.args
-
-
 @app.route("/users/<id>", methods=["PATCH"])
 def modify_user(id):
     """
-    Modify user's informations selected thanks to the ID
-    Returns: The user with his new parameters
-
+        Modify user's informations selected thanks to the ID
+        Returns: The user with his new parameters
     """
-    args = request.args
 
     user_id = int(escape(id))
+    args = request.args
 
     for key, values in args.items():
         new_values = {"$set": {key: values}}
@@ -321,6 +409,64 @@ def modify_user(id):
     users.update_one(myquery, new_values)
     return success_msg(200, "Utilisateur modifié")
 
+@app.route("/tournaments", methods=["POST"])
+def create_new_tournament():
+    """
+        Create a tournament with values passed in request args and insert it into the database
+    """
+    args = request.args
+
+    error = prevent_create_tournament_errors(args)
+
+    if error['found_error']:
+        return error['error_content']
+    else:
+        tournament_id = get_tournament_id()
+        create_tournament(args, tournament_id)
+        return success_msg(200, f'Le tournoi a été créé, id: {tournament_id}')
+
+@app.route("/users/<id>/tournaments", methods=["POST"])
+def join_tournament(id):
+    """
+        Add a tournament to the selected user
+
+        params:
+            id: the id of the user
+    """
+    user_id = escape(id)
+
+    # Check if args and user_id contain errors
+    error = prevent_join_tournament_errors(request.args, user_id)
+    tournaments_id = request.args.get('id')
+
+    if error['found_error']:
+        return error['error_content']
+    else:
+        tournament = get_tournament_by_id(int(tournaments_id))
+        user = get_user_by_id(int(user_id))
+    user_id = int(escape(id))
+
+        
+    # Increment the number of participant of the tournament
+    # If the participant limit has been reached, don't increment
+    if tournament['participant_limit'] == tournament['total_participant']:
+        return error_msg(400, 'Ce tournois est complet')
+    # Check if the user already joined the tournament
+    elif is_tournament_already_joined(user['tournaments_list'], tournaments_id):
+        return error_msg(400, f'Ce tournoi a déjà été rejoint par l\'utilisateur {user_id}')
+    else:
+        # Increment the number of participant of the tournament
+        tournaments.update_one(tournament, { '$inc': { 'total_participant': +1 }})
+
+        # Add the tournament in the user profile
+        new_tournament = {
+            'id': tournaments_id,
+            'title': tournament['title']
+        }
+        user['tournaments_list'].append(new_tournament)
+        users.update_one({'_id': int(user_id)}, { '$set': { 'tournaments_list': user['tournaments_list'] }})
+    
+        return success_msg(200, f'Le tournoi {tournaments_id} a été rejoint')
 
 @app.route("/tournaments", methods=["GET"])
 def display_tournaments_list():
