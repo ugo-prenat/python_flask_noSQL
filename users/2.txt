@@ -1,6 +1,0 @@
-{
-    "id": "2",
-    "firstname": "Mya",
-    "lastname": "Decker",
-    "age": "5"
-}

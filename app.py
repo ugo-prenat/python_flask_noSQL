@@ -4,9 +4,9 @@ from flask import Flask
 import numpy as np
 import os
 import json
+from markupsafe import escape
 
 app = Flask(__name__)
-
 
 # Connection to the data base
 username = 'maxime_ugo'
@@ -21,6 +21,7 @@ db = client.g4g
 users = db.users
 tournaments = db.tournaments
 games = db.games
+
 
 def error_msg(code, msg):
     """
@@ -37,6 +38,7 @@ def error_msg(code, msg):
     }
     return error
 
+
 def success_msg(code, msg):
     """
         Return an success object
@@ -46,11 +48,12 @@ def success_msg(code, msg):
             msg: the message of the success
     """
 
-    succes = {
+    success = {
         'code': code,
         'msg': msg
     }
-    return succes
+    return success
+
 
 def prevent_create_user_errors(args):
     """
@@ -58,7 +61,7 @@ def prevent_create_user_errors(args):
 
         params:
             args: array of all arguments passed in the request
-        
+
         return the 'error' object
     """
 
@@ -98,13 +101,14 @@ def prevent_create_user_errors(args):
 
     # Loop on all args to see if an arg is unknown
     for arg in args:
-        if arg != 'username' and arg != 'mail' and arg != 'password' and arg != 'is_admin' :
+        if arg != 'username' and arg != 'mail' and arg != 'password' and arg != 'is_admin':
             error['found_error'] = True
             error['error_content'] = error_msg(400, f'L\'argument \'{arg}\' est inconnu')
             return error
 
     # if no error was found, return the 'error' object with the param 'found_error' set to false by default
     return error
+
 
 def create_user(args):
     """
@@ -140,11 +144,31 @@ def create_new_user():
         create_user(args)
         return success_msg(200, 'L\'utilisateur a été créé')
 
-                    
+
+@app.route("/users/<id>", methods=["PATCH"])
+def modify_user(id):
+    """
+    Modify user's informations selected thanks to the ID
+    Returns: The user with his new parameters
+
+    """
+    args = request.args
+
+    user_list = users.find({})
+
+    user_id = int(escape(id))
+
+    for key, value in args.items():
+        new_values = {"$set": {key: value}}
+
+    myquery = {"_id": user_id}
+    users.update_one(myquery, new_values)
+    return success_msg(200, "Utilisateur modifié")
+
 
 if __name__ == '__main__':
     app.run(
-        host = "127.0.0.1",
-        port = 3000,
-        debug = True
+        host="127.0.0.1",
+        port=3000,
+        debug=True
     )
