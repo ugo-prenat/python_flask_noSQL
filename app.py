@@ -8,7 +8,6 @@ import json
 
 app = Flask(__name__)
 
-
 # Connection to the data base
 username = 'maxime_ugo'
 password = 'dspDsTMgE5bu0J72'
@@ -22,6 +21,7 @@ db = client.g4g
 users = db.users
 tournaments = db.tournaments
 games = db.games
+
 
 def error_msg(code, msg):
     """
@@ -37,6 +37,7 @@ def error_msg(code, msg):
         'msg': msg
     }
     return error
+
 
 def success_msg(code, msg):
     """
@@ -64,6 +65,7 @@ def get_user_id():
     last_id = last_user['_id']
     return last_id + 1
 
+
 def get_tournament_id():
     """
         Get the id of the last tournament in the database and return it plus 1
@@ -73,6 +75,7 @@ def get_tournament_id():
     last_tournament = tournaments_list[tournament_list_len - 1]
     last_id = last_tournament['_id']
     return last_id + 1
+
 
 def is_game_in_collection(game_name):
     """
@@ -136,13 +139,14 @@ def prevent_create_user_errors(args):
 
     # Loop on all args to see if an arg is unknown
     for arg in args:
-        if arg != 'username' and arg != 'mail' and arg != 'password' and arg != 'is_admin' :
+        if arg != 'username' and arg != 'mail' and arg != 'password' and arg != 'is_admin':
             error['found_error'] = True
             error['error_content'] = error_msg(400, f'L\'argument \'{arg}\' est inconnu')
             return error
 
     # if no error was found, return the 'error' object with the param 'found_error' set to false by default
     return error
+
 
 def prevent_create_tournament_errors(args):
     """
@@ -186,7 +190,8 @@ def prevent_create_tournament_errors(args):
     # Check if the 'participant_limit' variable is a number
     if participant_limit.isnumeric() == False:
         error['found_error'] = True
-        error['error_content'] = error_msg(400, f'La valeur de l\'argument \'participant_limit\' est incorrecte, nombre requis')
+        error['error_content'] = error_msg(400,
+                                           f'La valeur de l\'argument \'participant_limit\' est incorrecte, nombre requis')
         return error
 
     # if no error was found, return the 'error' object with the param 'found_error' set to false by default
@@ -211,6 +216,7 @@ def create_user(args, user_id):
     }
     users.insert_one(new_user)
 
+
 def create_tournament(args, tournament_id):
     """
         Create an object containing the values of the new tournament and insert it in the database
@@ -229,6 +235,7 @@ def create_tournament(args, tournament_id):
     }
     tournaments.insert_one(new_tournament)
 
+
 def is_user_exists(wanted_id):
     """
         Loop on the list of all users to find a wanted user
@@ -243,6 +250,7 @@ def is_user_exists(wanted_id):
             return True
 
     return False
+
 
 @app.route("/users", methods=["POST"])
 def create_new_user():
@@ -262,6 +270,7 @@ def create_new_user():
         create_user(args, user_id)
         return success_msg(200, f'L\'utilisateur a été créé, id: {user_id}')
 
+
 @app.route("/users/<id>", methods=["DELETE"])
 def delete_user(id):
     """
@@ -279,11 +288,12 @@ def delete_user(id):
     # Check if the given id is attached to a user in the DB
     if is_user_exists(int(user_id)):
         # Delete user
-        users.delete_one({ '_id': int(user_id) })
+        users.delete_one({'_id': int(user_id)})
         return success_msg(200, f'L\'utilisateur {user_id} a été supprimé')
 
     else:
         return error_msg(400, f'Aucun utilisateur n\'est rattaché à l\'id {user_id}')
+
 
 @app.route("/tournaments", methods=["POST"])
 def create_new_tournament():
@@ -298,19 +308,9 @@ def modify_user(id):
     """
     Modify user's informations selected thanks to the ID
     Returns: The user with his new parameters
-    error = prevent_create_tournament_errors(args)
-
-    if error['found_error']:
-        return error['error_content']
-    else:
-        tournament_id = get_tournament_id()
-        create_tournament(args, tournament_id)
-        return success_msg(200, f'Le tournoi a été créé, id: {tournament_id}')
 
     """
     args = request.args
-
-    user_list = users.find({})
 
     user_id = int(escape(id))
 
@@ -322,9 +322,34 @@ def modify_user(id):
     return success_msg(200, "Utilisateur modifié")
 
 
+@app.route("/tournaments", methods=["GET"])
+def display_tournaments_list():
+    tournaments_list = tournaments.find({})
+    tournaments_array = {"tournament": []}
+
+    for tournament in tournaments_list:
+        tournaments_array["tournament"].append(tournament)
+    return tournaments_array
+
+
+@app.route("/tournaments/<id>", methods=["PATCH"])
+def modify_tournament(id):
+
+    args = request.args
+
+    tournaments_id = int(escape(id))
+
+    for key, values in args.items():
+        new_values = {"$set": {key: values}}
+
+    myquery = {"_id": tournaments_id}
+    tournaments.update_one(myquery, new_values)
+    return success_msg(200, "Tournoi modifié")
+
+
 if __name__ == '__main__':
     app.run(
-        host = "127.0.0.1",
-        port = 3000,
-        debug = True
+        host="127.0.0.1",
+        port=3000,
+        debug=True
     )
