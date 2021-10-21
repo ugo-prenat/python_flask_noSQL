@@ -314,8 +314,8 @@ def modify_user(id):
 
     user_id = int(escape(id))
 
-    for key, value in args.items():
-        new_values = {"$set": {key: value}}
+    for key, values in args.items():
+        new_values = {"$set": {key: values}}
 
     myquery = {"_id": user_id}
     users.update_one(myquery, new_values)
