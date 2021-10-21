@@ -425,13 +425,6 @@ def create_new_tournament():
         create_tournament(args, tournament_id)
         return success_msg(200, f'Le tournoi a été créé, id: {tournament_id}')
 
-@app.route("/users/<id>", methods=["PATCH"])
-def modify_user(id):
-    """
-    Modify user's informations selected thanks to the ID
-    Returns: The user with his new parameters
-    """
-
 @app.route("/users/<id>/tournaments", methods=["POST"])
 def join_tournament(id):
     """
