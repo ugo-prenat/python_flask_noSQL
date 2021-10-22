@@ -364,7 +364,7 @@ def create_new_user():
     else:
         user_id = get_user_id()
         create_user(args, user_id)
-        return success_msg(200, f'L\'utilisateur a été créé, id: {user_id}')
+        return success_msg(202, f'L\'utilisateur a été créé, id: {user_id}')
 
 
 @app.route("/users/<id>", methods=["DELETE"])
@@ -386,7 +386,7 @@ def delete_user_route(id):
     if is_user_exists(int(user_id)):
         # Delete user
         users.delete_one({'_id': int(user_id)})
-        return success_msg(200, f'L\'utilisateur {user_id} a été supprimé')
+        return success_msg(202, f'L\'utilisateur {user_id} a été supprimé')
 
     else:
         return error_msg(400, f'Aucun utilisateur n\'est rattaché à l\'id {user_id}')
@@ -406,7 +406,7 @@ def modify_user(id):
 
     myquery = {"_id": user_id}
     users.update_one(myquery, new_values)
-    return success_msg(200, "Utilisateur modifié")
+    return success_msg(202, "Utilisateur modifié")
 
 @app.route("/tournaments", methods=["POST"])
 def create_new_tournament():
@@ -423,7 +423,7 @@ def create_new_tournament():
     else:
         tournament_id = get_tournament_id()
         create_tournament(args, tournament_id)
-        return success_msg(200, f'Le tournoi a été créé, id: {tournament_id}')
+        return success_msg(202, f'Le tournoi a été créé, id: {tournament_id}')
 
 @app.route("/users/<id>/tournaments", methods=["POST"])
 def join_tournament(id):
@@ -467,7 +467,7 @@ def join_tournament(id):
         user['tournaments_list'].append(new_tournament)
         users.update_one({'_id': int(user_id)}, { '$set': { 'tournaments_list': user['tournaments_list'] }})
     
-        return success_msg(200, f'Le tournoi {tournaments_id} a été rejoint')
+        return success_msg(202, f'Le tournoi {tournaments_id} a été rejoint')
 
 @app.route("/tournaments", methods=["GET"])
 def display_tournaments_list():
@@ -500,24 +500,7 @@ def modify_tournament(id):
 
     myquery = {"_id": tournaments_id}
     tournaments.update_one(myquery, new_values)
-    return success_msg(200, "Tournoi modifié")
-
-
-def is_tournament_exists(wanted_id):
-    """
-           Loop on the list of all tournaments to find a wanted user
-
-           params:
-               wanted_id: the id of the tournament we want to known if he exists or not
-       """
-    tournament_list = tournaments.find({})
-
-    for tournament in tournament_list:
-        if tournament['_id'] == wanted_id:
-            return True
-
-    return False
-
+    return success_msg(202, "Tournoi modifié")
 
 @app.route("/tournaments/<id>", methods=["DELETE"])
 def delete_tournament(id):
@@ -531,16 +514,16 @@ def delete_tournament(id):
 
     # Check if the given id isn't a number
     if tournament_id.isnumeric() == False:
-        return error_msg(400, f'La valeur \'{id}\' est incorrecte, nombre requis')
+        return error_msg(400, f'La valeur \'{tournament_id}\' est incorrecte, nombre requis')
 
     # Check if the given id is attached to a tournament in the DB
     if is_tournament_exists(int(tournament_id)):
-        # Delete user
+        # Delete tournament
         tournaments.delete_one({'_id': int(tournament_id)})
-        return success_msg(200, f'L\'utilisateur {tournament_id} a été supprimé')
+        return success_msg(202, f'Le tournoi {tournament_id} a été supprimé')
 
     else:
-        return error_msg(400, f'Aucun utilisateur n\'est rattaché à l\'id {tournament_id}')
+        return error_msg(400, f'Aucun tournoi n\'est rattaché à l\'id {tournament_id}')
 
 
 if __name__ == '__main__':
