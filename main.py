@@ -294,7 +294,7 @@ def create_tournament(args, tournament_id):
         '_id': tournament_id,
         'title': args.get('title'),
         'game': args.get('game'),
-        'participant_limit': args.get('participant_limit'),
+        'participant_limit': int(args.get('participant_limit')),
         'total_participant': 0,
     }
     tournaments.insert_one(new_tournament)
