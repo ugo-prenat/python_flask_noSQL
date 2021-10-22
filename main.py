@@ -137,7 +137,6 @@ def prevent_create_user_errors(args):
     username = args.get('username')
     mail = args.get('mail')
     password = args.get('password')
-    is_admin = args.get('is_admin')
 
     # Check if required args are missing
     if username == None:
@@ -152,20 +151,10 @@ def prevent_create_user_errors(args):
         error['found_error'] = True
         error['error_content'] = error_msg(400, 'L\'argument \'password\' est manquant')
         return error
-    elif is_admin == None:
-        error['found_error'] = True
-        error['error_content'] = error_msg(400, 'L\'argument \'is_admin\' est manquant')
-        return error
-
-    # Check if the 'is_admin' value is a boolean
-    if is_admin.lower() != 'false' and is_admin.lower() != 'true':
-        error['found_error'] = True
-        error['error_content'] = error_msg(400, 'La valeur de l\'argument \'is_admin\' est incorrecte, booléen requis')
-        return error
 
     # Loop on all args to see if an arg is unknown
     for arg in args:
-        if arg != 'username' and arg != 'mail' and arg != 'password' and arg != 'is_admin':
+        if arg != 'username' and arg != 'mail' and arg != 'password':
             error['found_error'] = True
             error['error_content'] = error_msg(400, f'L\'argument \'{arg}\' est inconnu')
             return error
@@ -281,7 +270,6 @@ def create_user(args, user_id):
         'username': args.get('username'),
         'mail': args.get('mail'),
         'password': args.get('password'),
-        'is_admin': args.get('is_admin'),
         'tournaments_list': []
     }
     users.insert_one(new_user)
